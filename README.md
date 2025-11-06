@@ -11,11 +11,21 @@ Ce projet est une API RESTful simple développée avec Flask, conçue pour démo
 
 *   **Python**
 *   **Flask** : Micro-framework web pour Python
+*   **Flask-SQLAlchemy** : ORM pour interagir avec la base de données
+*   **Flask-JWT-Extended** : Pour l'authentification basée sur les tokens JWT
+*   **Werkzeug** : Pour le hachage des mots de passe
 *   **python-dotenv** : Pour la gestion des variables d'environnement
+*   **psycopg2-binary** : Adaptateur PostgreSQL pour Python
 
 ## ⚙️ Installation et Lancement
 
-Suivez ces étapes pour configurer et exécuter le projet localement :
+Ce projet peut être lancé en utilisant Docker Compose, ce qui simplifie la gestion de la base de données PostgreSQL et de l'application Flask.
+
+### Prérequis
+
+*   [Docker](https://docs.docker.com/get-docker/) et [Docker Compose](https://docs.docker.com/compose/install/) installés.
+
+### Étapes de Lancement
 
 1.  **Cloner le dépôt :**
     ```bash
@@ -23,38 +33,60 @@ Suivez ces étapes pour configurer et exécuter le projet localement :
     cd secure-flask-api
     ```
 
-2.  **Créer et activer l'environnement virtuel :**
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
+2.  **Configuration des variables d'environnement :**
+    *   Créez un fichier `.env` à la racine du projet avec les variables d'environnement suivantes (remplacez les valeurs par les vôtres). Ces variables seront utilisées par Docker Compose.
+        ```
+        DATABASE_URL="postgresql://user:password@db:5432/mydatabase"
+        JWT_SECRET_KEY="your-super-secret-jwt-key"
+        ```
+        *(Note : `JWT_SECRET_KEY` doit être une chaîne de caractères longue et aléatoire. L'utilisateur et le mot de passe de la base de données sont définis dans `docker-compose.yml`.)*
 
-3.  **Installer les dépendances :**
+3.  **Initialiser la base de données et lancer l'application avec Docker Compose :**
     ```bash
-    pip install -r requirements.txt
+    docker-compose up --build -d
+    docker-compose exec web flask db init
+    docker-compose exec web flask db migrate -m "Initial migration"
+    docker-compose exec web flask db upgrade
     ```
-    *(Note : Le fichier `requirements.txt` sera créé ultérieurement.)*
+    *   `docker-compose up --build -d` : Construit les images Docker, crée et démarre les conteneurs en arrière-plan.
+    *   `flask db init` : Initialise le répertoire des migrations.
+    *   `flask db migrate -m "Initial migration"` : Crée la première migration basée sur le modèle `User`.
+    *   `flask db upgrade` : Applique la migration à la base de données, créant la table `User`.
 
-4.  **Exécuter l'application Flask :**
-    ```bash
-    flask run
-    ```
-
-    L'API sera accessible à l'adresse `http://127.0.0.1:5000/`.
+    L'API sera accessible à l'adresse `http://localhost:5001/`.
 
 ## 📝 Utilisation
 
-Accédez à `http://127.0.0.1:5000/` dans votre navigateur ou avec un outil comme `curl` pour voir le message de bienvenue :
+### Point de terminaison racine
+Accédez à `http://localhost:5001/` dans votre navigateur ou avec un outil comme `curl` pour voir le message de bienvenue :
 
 ```bash
-curl http://127.0.0.1:5000/
+curl http://localhost:5001/
+```
+
+### Enregistrement d'un utilisateur
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"username": "testuser", "password": "password123"}' http://localhost:5001/register
+```
+
+### Connexion d'un utilisateur et obtention d'un token JWT
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"username": "testuser", "password": "password123"}' http://localhost:5001/login
+```
+*(Copiez le `access_token` retourné.)*
+
+### Accès à une route protégée avec le token
+```bash
+curl -X GET -H "Authorization: Bearer VOTRE_TOKEN_JWT_ICI" http://localhost:5001/protected
+```
+
+### Arrêter et supprimer les conteneurs Docker
+```bash
+docker-compose down
 ```
 
 ## 🚧 Prochaines Étapes
 
-*   Ajouter la gestion des utilisateurs (enregistrement, connexion).
-*   Implémenter l'authentification JWT.
-*   Connecter l'API à une base de données (par exemple, PostgreSQL avec SQLAlchemy).
 *   Ajouter des tests unitaires et d'intégration.
 *   Mettre en œuvre des mesures de sécurité supplémentaires (validation des entrées, gestion des erreurs, CORS).
-*   Conteneuriser l'application avec Docker.
+*   Ajouter d'autres fonctionnalités à l'API.
