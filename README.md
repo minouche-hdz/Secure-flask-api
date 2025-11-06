@@ -87,6 +87,20 @@ docker-compose down
 
 ## 🚧 Prochaines Étapes
 
-*   Ajouter des tests unitaires et d'intégration.
 *   Mettre en œuvre des mesures de sécurité supplémentaires (validation des entrées, gestion des erreurs, CORS).
 *   Ajouter d'autres fonctionnalités à l'API.
+
+## ✅ Tests
+
+Pour exécuter les tests unitaires et d'intégration, assurez-vous que les conteneurs Docker sont arrêtés (`docker-compose down`) ou que vous exécutez les tests dans un environnement virtuel séparé pour éviter les conflits de base de données.
+
+1.  **Activer l'environnement virtuel (si vous n'utilisez pas Docker) :**
+    ```bash
+    source venv/bin/activate
+    ```
+
+2.  **Exécuter les tests :**
+    ```bash
+    pytest
+    ```
+    Les tests utiliseront une base de données SQLite en mémoire pour ne pas interférer avec votre base de données PostgreSQL principale.
