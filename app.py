@@ -2,15 +2,20 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_migrate import Migrate
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv() # Charge les variables d'environnement du fichier .env
 
 app = Flask(__name__)
 
-# Configuration de la base de données SQLite
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+# Configuration de la base de données PostgreSQL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db) # Initialise Flask-Migrate
 
 # Configuration de Flask-JWT-Extended
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'super-secret-key') # Utilise une variable d'environnement pour la clé secrète
@@ -21,7 +26,7 @@ jwt = JWTManager(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -32,9 +37,9 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
-# Création des tables de la base de données
-with app.app_context():
-    db.create_all()
+# Les tables de la base de données seront créées/mises à jour via Flask-Migrate
+# with app.app_context():
+#     db.create_all()
 
 @app.route('/')
 def home():
