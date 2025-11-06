@@ -85,11 +85,6 @@ curl -X GET -H "Authorization: Bearer VOTRE_TOKEN_JWT_ICI" http://localhost:5001
 docker-compose down
 ```
 
-## 🚧 Prochaines Étapes
-
-*   Mettre en œuvre des mesures de sécurité supplémentaires (validation des entrées, gestion des erreurs, CORS).
-*   Ajouter d'autres fonctionnalités à l'API.
-
 ## ✅ Tests
 
 Pour exécuter les tests unitaires et d'intégration, assurez-vous que les conteneurs Docker sont arrêtés (`docker-compose down`) ou que vous exécutez les tests dans un environnement virtuel séparé pour éviter les conflits de base de données.
@@ -104,3 +99,9 @@ Pour exécuter les tests unitaires et d'intégration, assurez-vous que les conte
     pytest
     ```
     Les tests utiliseront une base de données SQLite en mémoire pour ne pas interférer avec votre base de données PostgreSQL principale.
+
+## 🚧 Prochaines Étapes
+
+*   Mettre en œuvre des mesures de sécurité supplémentaires (validation des entrées, gestion des erreurs, CORS).
+*   Ajouter d'autres fonctionnalités à l'API.
+*   Mettre en place une intégration continue/déploiement continu (CI/CD).
