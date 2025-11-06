@@ -9,18 +9,77 @@ from dotenv import load_dotenv
 
 load_dotenv() # Charge les variables d'environnement du fichier .env
 
-app = Flask(__name__)
+db = SQLAlchemy()
+migrate = Migrate()
+jwt = JWTManager()
 
-# Configuration de la base de données PostgreSQL
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-migrate = Migrate(app, db) # Initialise Flask-Migrate
+def create_app(test_config=None):
+    app = Flask(__name__)
 
-# Configuration de Flask-JWT-Extended
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'super-secret-key') # Utilise une variable d'environnement pour la clé secrète
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
-jwt = JWTManager(app)
+    if test_config:
+        app.config.from_mapping(test_config)
+    else:
+        # Configuration de la base de données PostgreSQL
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
+        app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'super-secret-key')
+
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    jwt.init_app(app)
+
+    # Création des tables de la base de données pour le contexte d'application
+    # Ceci est géré par Flask-Migrate en production, mais nécessaire pour les tests SQLite en mémoire
+    with app.app_context():
+        db.create_all()
+
+    @app.route('/')
+    def home():
+        return jsonify({"message": "Bienvenue sur l'API RESTful sécurisée !"})
+
+    # Route d'enregistrement
+    @app.route('/register', methods=['POST'])
+    def register():
+        username = request.json.get('username', None)
+        password = request.json.get('password', None)
+
+        if not username or not password:
+            return jsonify({"msg": "Nom d'utilisateur et mot de passe requis"}), 400
+
+        if User.query.filter_by(username=username).first():
+            return jsonify({"msg": "Nom d'utilisateur déjà pris"}), 409
+
+        new_user = User(username=username)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({"msg": "Utilisateur enregistré avec succès"}), 201
+
+    # Route de connexion
+    @app.route('/login', methods=['POST'])
+    def login():
+        username = request.json.get('username', None)
+        password = request.json.get('password', None)
+
+        user = User.query.filter_by(username=username).first()
+
+        if user is None or not user.check_password(password):
+            return jsonify({"msg": "Mauvais nom d'utilisateur ou mot de passe"}), 401
+
+        access_token = create_access_token(identity=user.username)
+        return jsonify(access_token=access_token), 200
+
+    # Route protégée (exemple)
+    @app.route('/protected', methods=['GET'])
+    @jwt_required()
+    def protected():
+        current_user = get_jwt_identity()
+        return jsonify(logged_in_as=current_user), 200
+
+    return app
 
 # Modèle utilisateur
 class User(db.Model):
@@ -37,53 +96,6 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
-# Les tables de la base de données seront créées/mises à jour via Flask-Migrate
-# with app.app_context():
-#     db.create_all()
-
-@app.route('/')
-def home():
-    return jsonify({"message": "Bienvenue sur l'API RESTful sécurisée !"})
-
-# Route d'enregistrement
-@app.route('/register', methods=['POST'])
-def register():
-    username = request.json.get('username', None)
-    password = request.json.get('password', None)
-
-    if not username or not password:
-        return jsonify({"msg": "Nom d'utilisateur et mot de passe requis"}), 400
-
-    if User.query.filter_by(username=username).first():
-        return jsonify({"msg": "Nom d'utilisateur déjà pris"}), 409
-
-    new_user = User(username=username)
-    new_user.set_password(password)
-    db.session.add(new_user)
-    db.session.commit()
-
-    return jsonify({"msg": "Utilisateur enregistré avec succès"}), 201
-
-# Route de connexion
-@app.route('/login', methods=['POST'])
-def login():
-    username = request.json.get('username', None)
-    password = request.json.get('password', None)
-
-    user = User.query.filter_by(username=username).first()
-
-    if user is None or not user.check_password(password):
-        return jsonify({"msg": "Mauvais nom d'utilisateur ou mot de passe"}), 401
-
-    access_token = create_access_token(identity=user.username)
-    return jsonify(access_token=access_token), 200
-
-# Route protégée (exemple)
-@app.route('/protected', methods=['GET'])
-@jwt_required()
-def protected():
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user), 200
-
 if __name__ == '__main__':
+    app = create_app()
     app.run(debug=True, port=5001)
