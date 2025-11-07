@@ -96,3 +96,54 @@ def test_protected_route(test_client):
     assert rv.status_code == 200
     response_data = json.loads(rv.data)
     assert response_data['logged_in_as'] == "protecteduser"
+
+def test_register_user_validation(test_client):
+    """Teste la validation des entrées lors de l'enregistrement."""
+    # Nom d'utilisateur trop court
+    rv = register_user(test_client, 'ab', 'password123')
+    assert rv.status_code == 400
+    response_data = json.loads(rv.data)
+    assert "Erreurs de validation" in response_data['msg']
+    assert "Length must be between 3 and 80." in response_data['errors']['username'][0]
+
+    # Mot de passe trop court
+    rv = register_user(test_client, 'testuser2', 'pass')
+    assert rv.status_code == 400
+    response_data = json.loads(rv.data)
+    assert "Erreurs de validation" in response_data['msg']
+    assert "Shorter than minimum length 6." in response_data['errors']['password'][0]
+
+    # Pas de JSON
+    rv = test_client.post('/register', data='not json', content_type='text/plain')
+    assert rv.status_code == 400
+    response_data = json.loads(rv.data)
+    assert response_data['msg'] == "Type de contenu doit être application/json"
+
+def test_login_user_validation(test_client):
+    """Teste la validation des entrées lors de la connexion."""
+    # Pas de JSON
+    rv = test_client.post('/login', data='not json', content_type='text/plain')
+    assert rv.status_code == 400
+    response_data = json.loads(rv.data)
+    assert response_data['msg'] == "Type de contenu doit être application/json"
+
+def test_error_handlers(test_client):
+    """Teste les gestionnaires d'erreurs."""
+    # Teste la route 404
+    rv = test_client.get('/nonexistent_route')
+    assert rv.status_code == 404
+    response_data = json.loads(rv.data)
+    assert response_data['msg'] == "Ressource non trouvée"
+
+    # Teste la route 400 (déjà couverte par les tests de validation, mais on peut ajouter un cas générique)
+    rv = test_client.post('/register', data='{"username": "a"}', content_type='application/json')
+    assert rv.status_code == 400
+    response_data = json.loads(rv.data)
+    assert "Erreurs de validation" in response_data['msg']
+
+def test_cors_headers(test_client):
+    """Teste les en-têtes CORS."""
+    rv = test_client.get('/', headers={'Origin': 'http://localhost:3000'})
+    assert rv.status_code == 200
+    assert 'Access-Control-Allow-Origin' in rv.headers
+    assert rv.headers['Access-Control-Allow-Origin'] == 'http://localhost:3000'
